@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SVD Image Compression</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <style>
+        #toast-notification {
+            position: fixed;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgb(51, 194, 51);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-family: "Gill Sans", sans-serif;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #toast-notification.show {
+            top: 30px;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .checkmark {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: block;
+            stroke-width: 4;
+            stroke: #fff;
+            stroke-miterlimit: 10;
+            box-shadow: inset 0px 0px 0px #fff;
+        }
+
+        .checkmark__circle {
+            stroke-dasharray: 166;
+            stroke-dashoffset: 166;
+            stroke-width: 4;
+            stroke-miterlimit: 10;
+            stroke: #fff;
+            fill: none;
+            animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        }
+
+        .checkmark__check {
+            transform-origin: 50% 50%;
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.5s forwards;
+        }
+
+        @keyframes stroke {
+            100% { stroke-dashoffset: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="toast-notification"></div>
+
+<div class="container">
+    <h1>SVD Image Compression</h1>
+
+    <form method="post" enctype="multipart/form-data">
+        <label>Select images</label>
+        <div class="dosya-yukle-kutu">
+            <input type="file" name="image" id="dosya-sec" class="input-gizli" multiple required>
+            <label for="dosya-sec" class="btn-yukle">
+                <span>📁</span> Select Files 
+            </label>
+        </div>
+
+        <label>k value</label>
+        <div class="value_box">
+            <input type="number" name="k" value="50">
+        </div> 
+
+        <button type="submit">
+            <span>⬇️</span> Compress
+        </button>
+    </form>
+</div>
+
+{% if results %}
+<div class="results-wrapper">
+    {% for item in results %}
+    <div class="result-card">
+        <div class="result" style="width: 100%;">
+            <h3 class="info_title" style="color: rgb(51, 194, 51);">{{ item.filename }}</h3>
+            <p style="color: white;">Dimension: {{ item.M }} × {{ item.N }} | k = {{ item.k }}</p>
+            
+            <table style="width: 100%;">
+                <tr>
+                    <td>Original File Size</td>
+                    <td>{{ (item.original_file_size / 1024) | round(2) }} KB</td>
+                </tr>
+                <tr>
+                    <td>Original Matrix Size</td>
+                    <td>{{ (item.original_matrix_size / 1024) | round(2) }} KB</td>
+                </tr>
+                <tr>
+                    <td>Compressed Matrix Size</td>
+                    <td>{{ (item.compressed_matrix_size / 1024) | round(2) }} KB</td>
+                </tr>
+                <tr>
+                    <td>Compression Ratio</td>
+                    <td>{{ item.compression_ratio | round(2) }}x</td>
+                </tr>
+                <tr>
+                    <td>Size Gain</td>
+                    <td class="size_gain">%{{ item.gain_percent | round(2) }}</td>
+                </tr>
+            </table>
+
+            <img src="{{ url_for('static', filename=item.out_filename) }}" style="max-width: 100%; margin-top: 20px; border-radius: 10px;">
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const fileInput = document.getElementById('dosya-sec');
+        const toast = document.getElementById('toast-notification');
+
+        if(fileInput && toast) {
+            fileInput.addEventListener('change', function() {
+                if(this.files && this.files.length > 0) {
+                    const svgIcon = `
+                        <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                            <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                            <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                    `;
+                    
+                    let mesaj = "";
+                    if(this.files.length > 1) {
+                        mesaj = this.files.length + " dosya seçildi";
+                    } else {
+                        mesaj = this.files[0].name + " seçildi";
+                    }
+                    
+                    toast.innerHTML = svgIcon + "<span>" + mesaj + "</span>";
+                    toast.classList.add('show');
+                    
+                    setTimeout(() => {
+                        toast.classList.remove('show');
+                    }, 3000);
+                }
+            });
+        }
+    });
+</script>
+
+</body>
+</html>
