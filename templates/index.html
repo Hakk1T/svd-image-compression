@@ -1,132 +1,244 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>SVD Image Compression</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVD Görüntü Sıkıştırma Motoru</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     
     <style>
-        #toast-notification {
-            position: fixed;
-            top: -50px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgb(51, 194, 51);
-            color: white;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-family: "Gill Sans", sans-serif;
-            font-weight: bold;
-            font-size: 16px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.4s ease;
+        /* --- TEMEL AYARLAR VE ARKA PLAN --- */
+        body {
+            margin: 0; padding: 40px 20px;
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 10px;
         }
 
-        #toast-notification.show {
-            top: 30px;
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .checkmark {
-            width: 24px;
-            height: 24px;
+        /* Glassmorphism için Arka Plan Parlamaları (Blobs) */
+        .bg-blob {
+            position: fixed;
             border-radius: 50%;
-            display: block;
-            stroke-width: 4;
-            stroke: #fff;
-            stroke-miterlimit: 10;
-            box-shadow: inset 0px 0px 0px #fff;
+            filter: blur(120px);
+            z-index: -1;
+            opacity: 0.6;
+            animation: float 10s infinite ease-in-out alternate;
+        }
+        .blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #3b82f6; }
+        .blob-2 { bottom: -10%; right: -10%; width: 40vw; height: 40vw; background: #8b5cf6; animation-delay: -5s;}
+        .blob-3 { top: 40%; left: 40%; width: 30vw; height: 30vw; background: #10b981; opacity: 0.3; animation-duration: 15s;}
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(50px, 50px) scale(1.1); }
         }
 
-        .checkmark__circle {
-            stroke-dasharray: 166;
-            stroke-dashoffset: 166;
-            stroke-width: 4;
-            stroke-miterlimit: 10;
-            stroke: #fff;
-            fill: none;
-            animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        /* --- GLASSMORPHISM PANELLERİ --- */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.45);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+            margin-bottom: 40px;
         }
 
-        .checkmark__check {
-            transform-origin: 50% 50%;
-            stroke-dasharray: 48;
-            stroke-dashoffset: 48;
-            animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.5s forwards;
+        h1 {
+            text-align: center;
+            margin-top: 0;
+            font-size: 32px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 30px;
+            letter-spacing: -1px;
         }
 
-        @keyframes stroke {
-            100% { stroke-dashoffset: 0; }
+        /* --- FORM ELEMANLARI --- */
+        .form-group { margin-bottom: 25px; }
+        label { display: block; font-weight: 600; color: #cbd5e1; margin-bottom: 10px; font-size: 14px; letter-spacing: 0.5px;}
+
+        /* Dosya Yükleme Alanı */
+        .file-upload-wrapper {
+            position: relative;
+            width: 100%;
+            height: 120px;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
         }
+        .file-upload-wrapper:hover {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+        .file-upload-wrapper input[type="file"] {
+            position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2;
+        }
+        .file-icon { font-size: 32px; margin-bottom: 10px; }
+        .file-text { color: #94a3b8; font-size: 14px; font-weight: 500; }
+        .file-text span { color: #3b82f6; font-weight: 600; }
+
+        /* K Değeri Inputu */
+        input[type="number"] {
+            width: 100%; padding: 15px;
+            background: rgba(0, 0, 0, 0.3); color: #34d399;
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
+            font-family: 'Fira Code', monospace; font-size: 16px; font-weight: bold;
+            box-sizing: border-box; outline: none; transition: 0.3s;
+        }
+        input[type="number"]:focus {
+            border-color: #8b5cf6; box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2);
+        }
+
+        /* Buton */
+        button[type="submit"] {
+            width: 100%; padding: 16px; margin-top: 10px;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: white; border: none; border-radius: 12px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease; display: flex; justify-content: center; align-items: center; gap: 10px;
+        }
+        button[type="submit"]:hover { transform: translateY(-2px); box-shadow: 0 15px 25px rgba(59, 130, 246, 0.4); filter: brightness(1.1); }
+        button[type="submit"]:active { transform: translateY(1px); }
+
+        /* --- SONUÇ KARTLARI --- */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .result-card {
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            transition: 0.3s;
+        }
+        .result-card:hover { border-color: rgba(255,255,255,0.2); transform: translateY(-5px);}
+
+        .result-title { color: #34d399; font-size: 18px; margin: 0 0 5px 0; font-weight: 600; word-wrap: break-word;}
+        .result-subtitle { color: #94a3b8; font-size: 13px; font-family: 'Fira Code', monospace; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;}
+
+        /* Tablo */
+        table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px; }
+        td { padding: 12px 5px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        td:first-child { color: #94a3b8; font-weight: 500; }
+        td:last-child { text-align: right; font-weight: 600; color: #f8fafc; font-family: 'Fira Code', monospace;}
+        tr:last-child td { border-bottom: none; }
+        .gain-val { color: #34d399 !important; font-size: 16px;}
+
+        .compressed-image {
+            width: 100%; height: auto; border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            margin-top: auto; border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* --- TOAST BİLDİRİMİ --- */
+        #toast-notification {
+            position: fixed; top: 20px; right: -100%;
+            background: rgba(16, 185, 129, 0.9); backdrop-filter: blur(10px);
+            color: white; padding: 15px 25px; border-radius: 12px;
+            font-weight: 600; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 1000; transition: right 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            display: flex; align-items: center; gap: 12px;
+        }
+        #toast-notification.show { right: 20px; }
+        .checkmark { width: 24px; height: 24px; border-radius: 50%; stroke-width: 3; stroke: #fff; stroke-miterlimit: 10; }
+        .checkmark__circle { stroke-dasharray: 166; stroke-dashoffset: 166; fill: none; animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards; }
+        .checkmark__check { transform-origin: 50% 50%; stroke-dasharray: 48; stroke-dashoffset: 48; animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.5s forwards; }
+        @keyframes stroke { 100% { stroke-dashoffset: 0; } }
     </style>
 </head>
 <body>
 
+<div class="bg-blob blob-1"></div>
+<div class="bg-blob blob-2"></div>
+<div class="bg-blob blob-3"></div>
+
 <div id="toast-notification"></div>
 
-<div class="container">
-    <h1>SVD Image Compression</h1>
+<div class="glass-panel">
+    <h1>SVD Görüntü Sıkıştırma</h1>
 
     <form method="post" enctype="multipart/form-data">
-        <label>Select images</label>
-        <div class="dosya-yukle-kutu">
-            <input type="file" name="image" id="dosya-sec" class="input-gizli" multiple required>
-            <label for="dosya-sec" class="btn-yukle">
-                <span>📁</span> Select Files 
-            </label>
+        <div class="form-group">
+            <label>Sıkıştırılacak Görselleri Seçin</label>
+            <div class="file-upload-wrapper">
+                <input type="file" name="image" id="dosya-sec" multiple required>
+                <div class="file-icon"></div>
+                <div class="file-text" id="file-label">Gözatmak için <span>tıklayın</span> veya sürükleyin</div>
+            </div>
         </div>
 
-        <label>k value</label>
-        <div class="value_box">
-            <input type="number" name="k" value="50">
+        <div class="form-group">
+            <label>Tekil Değer (k) Çarpanı</label>
+            <input type="number" name="k" value="50" min="1" required>
         </div> 
 
         <button type="submit">
-            <span>⬇️</span> Compress
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Sıkıştırmayı Başlat
         </button>
     </form>
 </div>
 
 {% if results %}
-<div class="results-wrapper">
+<div class="results-grid">
     {% for item in results %}
     <div class="result-card">
-        <div class="result" style="width: 100%;">
-            <h3 class="info_title" style="color: rgb(51, 194, 51);">{{ item.filename }}</h3>
-            <p style="color: white;">Dimension: {{ item.M }} × {{ item.N }} | k = {{ item.k }}</p>
-            
-            <table style="width: 100%;">
-                <tr>
-                    <td>Original File Size</td>
-                    <td>{{ (item.original_file_size / 1024) | round(2) }} KB</td>
-                </tr>
-                <tr>
-                    <td>Original Matrix Size</td>
-                    <td>{{ (item.original_matrix_size / 1024) | round(2) }} KB</td>
-                </tr>
-                <tr>
-                    <td>Compressed Matrix Size</td>
-                    <td>{{ (item.compressed_matrix_size / 1024) | round(2) }} KB</td>
-                </tr>
-                <tr>
-                    <td>Compression Ratio</td>
-                    <td>{{ item.compression_ratio | round(2) }}x</td>
-                </tr>
-                <tr>
-                    <td>Size Gain</td>
-                    <td class="size_gain">%{{ item.gain_percent | round(2) }}</td>
-                </tr>
-            </table>
+        <h3 class="result-title">{{ item.filename }}</h3>
+        <div class="result-subtitle">Çözünürlük: {{ item.M }} × {{ item.N }} | K = {{ item.k }}</div>
+        
+        <table>
+            <tr>
+                <td>Orijinal Dosya</td>
+                <td>{{ (item.original_file_size / 1024) | round(2) }} KB</td>
+            </tr>
+            <tr>
+                <td>Orijinal Matris</td>
+                <td>{{ (item.original_matrix_size / 1024) | round(2) }} KB</td>
+            </tr>
+            <tr>
+                <td>SVD Matrisi</td>
+                <td>{{ (item.compressed_matrix_size / 1024) | round(2) }} KB</td>
+            </tr>
+            <tr>
+                <td>Sıkıştırma Oranı</td>
+                <td>{{ item.compression_ratio | round(2) }}x</td>
+            </tr>
+            <tr>
+                <td>Kazanım (Gain)</td>
+                <td class="gain-val">%{{ item.gain_percent | round(2) }}</td>
+            </tr>
+        </table>
 
-            <img src="{{ url_for('static', filename=item.out_filename) }}" style="max-width: 100%; margin-top: 20px; border-radius: 10px;">
-        </div>
+        <img src="{{ url_for('static', filename=item.out_filename) }}" class="compressed-image" alt="Compressed Image">
     </div>
     {% endfor %}
 </div>
@@ -136,30 +248,36 @@
     document.addEventListener("DOMContentLoaded", function() {
         const fileInput = document.getElementById('dosya-sec');
         const toast = document.getElementById('toast-notification');
+        const fileLabel = document.getElementById('file-label');
 
         if(fileInput && toast) {
             fileInput.addEventListener('change', function() {
                 if(this.files && this.files.length > 0) {
                     const svgIcon = `
                         <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-                            <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
-                            <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                            <circle class="checkmark__circle" cx="26" cy="26" r="25"/>
+                            <path class="checkmark__check" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
                         </svg>
                     `;
                     
                     let mesaj = "";
                     if(this.files.length > 1) {
-                        mesaj = this.files.length + " dosya seçildi";
+                        mesaj = this.files.length + " görsel yüklendi";
+                        fileLabel.innerHTML = `<span style="color: #34d399;">${this.files.length} dosya seçildi</span>`;
                     } else {
-                        mesaj = this.files[0].name + " seçildi";
+                        mesaj = this.files[0].name.substring(0, 20) + (this.files[0].name.length > 20 ? '...' : '') + " yüklendi";
+                        fileLabel.innerHTML = `<span style="color: #34d399;">${this.files[0].name}</span>`;
                     }
                     
                     toast.innerHTML = svgIcon + "<span>" + mesaj + "</span>";
                     toast.classList.add('show');
                     
+                    // 3 Saniye sonra gizle
                     setTimeout(() => {
                         toast.classList.remove('show');
                     }, 3000);
+                } else {
+                    fileLabel.innerHTML = `Gözatmak için <span>tıklayın</span> veya sürükleyin`;
                 }
             });
         }
