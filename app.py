@@ -6,7 +6,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import os
 from werkzeug.utils import secure_filename
-
+ 
 app = Flask(__name__)
 
 UPLOAD_FOLDER = "uploads"
